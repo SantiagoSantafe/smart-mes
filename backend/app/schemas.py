@@ -74,6 +74,7 @@ class ProjectOut(ProjectListItem):
     notes: Optional[str]
     updated_at: datetime
     state_history: list[StateHistoryOut] = []
+    fcs_slots: list["FCSSlotOut"] = []
 
 
 # ---------------------------------------------------------------------------

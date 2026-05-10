@@ -459,7 +459,7 @@ export default function ProjectDetailPage() {
 
   const phase = project.current_state;
   const showMaterials = ["planos", "requisicion", "produccion", "entrega"].includes(phase);
-  const showFCS = ["produccion", "entrega"].includes(phase) || project.fcs_slots.length > 0;
+  const showFCS = ["produccion", "entrega"].includes(phase) || (project.fcs_slots ?? []).length > 0;
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -556,13 +556,13 @@ export default function ProjectDetailPage() {
         )}
 
         {/* History */}
-        {project.state_history.length > 0 && (
+        {(project.state_history ?? []).length > 0 && (
           <div className="mt-4 border-t border-slate-700 pt-4">
             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">
               Historial
             </p>
             <div className="space-y-1">
-              {project.state_history
+              {(project.state_history ?? [])
                 .slice()
                 .reverse()
                 .map((h) => (
@@ -587,7 +587,7 @@ export default function ProjectDetailPage() {
 
       {/* FCS schedule */}
       {showFCS && (
-        <FCSSection projectId={projectId} slots={project.fcs_slots} />
+        <FCSSection projectId={projectId} slots={project.fcs_slots ?? []} />
       )}
     </div>
   );
