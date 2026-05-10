@@ -6,8 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 from app.models import Base
 from app.api import auth, fcs, projects, purchasing, workcenters
+from app import migrations
 
 logger = logging.getLogger(__name__)
+
+try:
+    migrations.run(engine)
+except Exception as e:
+    logger.error("Error running startup migrations: %s", e)
 
 try:
     Base.metadata.create_all(bind=engine)
