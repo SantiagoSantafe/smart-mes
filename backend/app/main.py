@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,7 +7,12 @@ from app.database import engine
 from app.models import Base
 from app.api import auth, fcs, projects, purchasing, workcenters
 
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger(__name__)
+
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logger.error("Error creating DB tables: %s", e)
 
 app = FastAPI(title="Smart MES", version="2.0.0", docs_url="/docs")
 
@@ -16,7 +23,8 @@ app.add_middleware(
         "http://frontend:3000",
         "https://smart-mes-ten.vercel.app",
     ],
-    allow_credentials=True,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
