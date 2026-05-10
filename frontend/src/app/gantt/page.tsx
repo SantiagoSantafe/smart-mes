@@ -10,7 +10,7 @@ export default function GanttPage() {
     refreshInterval: 60000,
   });
   const { data: bottlenecks } = useSWR<Bottleneck[]>("bottlenecks", () =>
-    api.bottlenecks(21)
+    api.bottlenecks()
   );
 
   return (
@@ -26,7 +26,7 @@ export default function GanttPage() {
       {bottlenecks && bottlenecks.length > 0 && (
         <div className="bg-slate-800 border border-orange-800 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-orange-300 flex items-center gap-2 mb-3">
-            <AlertTriangle size={14} /> Centros con Alta Carga (próx. 21 días)
+            <AlertTriangle size={14} /> Áreas con Alta Carga (próx. 14 días)
           </h3>
           <div className="flex flex-wrap gap-4">
             {bottlenecks.map((b) => (

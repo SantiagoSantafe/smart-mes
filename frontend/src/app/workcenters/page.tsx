@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
-import { api, WorkCenter, ProcessRoute } from "@/lib/api";
+import { api, WorkArea, ProcessRoute } from "@/lib/api";
 import { Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 
-export default function WorkCentersPage() {
-  const { data: workcenters } = useSWR<WorkCenter[]>("workcenters", api.listWorkCenters);
+export default function WorkAreasPage() {
+  const { data: workcenters } = useSWR<WorkArea[]>("workcenters", api.listAreas);
   const { data: routes } = useSWR<ProcessRoute[]>("routes", api.listRoutes);
 
   const [showWCModal, setShowWCModal] = useState(false);
@@ -28,7 +28,7 @@ export default function WorkCentersPage() {
 
   async function submitWC(e: React.FormEvent) {
     e.preventDefault();
-    await api.createWorkCenter({
+    await api.createArea({
       ...wcForm,
       hours_per_day: Number(wcForm.hours_per_day),
       work_start_hour: Number(wcForm.work_start_hour),
@@ -70,7 +70,7 @@ export default function WorkCentersPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-white">Centros de Trabajo</h2>
+            <h2 className="text-2xl font-bold text-white">Áreas de Trabajo</h2>
             <p className="text-slate-400 text-sm mt-1">
               Máquinas y áreas que participan en la producción
             </p>
@@ -79,7 +79,7 @@ export default function WorkCentersPage() {
             onClick={() => setShowWCModal(true)}
             className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors"
           >
-            <Plus size={14} /> Nuevo Centro
+            <Plus size={14} /> Nueva Área
           </button>
         </div>
 
@@ -107,7 +107,7 @@ export default function WorkCentersPage() {
           ))}
           {(workcenters ?? []).length === 0 && (
             <div className="col-span-3 bg-slate-800 rounded-xl border border-slate-700 py-10 text-center text-slate-500">
-              Sin centros de trabajo. Crea uno para poder programar rutas.
+              Sin áreas de trabajo. Crea una para poder programar rutas.
             </div>
           )}
         </div>
@@ -238,7 +238,7 @@ export default function WorkCentersPage() {
 
       {/* WC Modal */}
       {showWCModal && (
-        <Modal onClose={() => setShowWCModal(false)} title="Nuevo Centro de Trabajo">
+        <Modal onClose={() => setShowWCModal(false)} title="Nueva Área de Trabajo">
           <form onSubmit={submitWC} className="space-y-3">
             <input required placeholder="Nombre (ej: CNC-01, Pintura, Ensamble)" value={wcForm.name} onChange={(e) => setWcForm({ ...wcForm, name: e.target.value })} className="input-field" />
             <input placeholder="Descripción" value={wcForm.description} onChange={(e) => setWcForm({ ...wcForm, description: e.target.value })} className="input-field" />
@@ -277,7 +277,7 @@ export default function WorkCentersPage() {
           <form onSubmit={(e) => submitStep(e, showStepModal)} className="space-y-3">
             <input required placeholder="Nombre del paso (ej: Corte de perfiles)" value={stepForm.name} onChange={(e) => setStepForm({ ...stepForm, name: e.target.value })} className="input-field" />
             <select required value={stepForm.work_center_id} onChange={(e) => setStepForm({ ...stepForm, work_center_id: e.target.value })} className="input-field">
-              <option value="">Centro de trabajo...</option>
+              <option value="">Área de trabajo...</option>
               {workcenters?.map((wc) => <option key={wc.id} value={wc.id}>{wc.name}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">

@@ -1,118 +1,132 @@
 "use client";
 
 import useSWR from "swr";
-import { api, DashboardStats, ProjectListItem } from "@/lib/api";
-import StatusBadge, { STATE_CONFIG } from "@/components/StatusBadge";
+import { api, DashboardData, KanbanCard, STATE_LABELS, STATES_ORDERED } from "@/lib/api";
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { AlertTriangle, Box, FolderOpen, TrendingUp } from "lucide-react";
+import { AlertTriangle, Box, FolderOpen, Package } from "lucide-react";
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color = "text-blue-400",
-}: {
-  label: string;
-  value: number | string;
-  icon: React.ElementType;
-  color?: string;
-}) {
+const STATE_COLORS: Record<string, string> = {
+  entrada_informacion: "border-slate-600",
+  planos: "border-blue-700",
+  requisicion: "border-yellow-700",
+  produccion: "border-orange-700",
+  entrega: "border-green-700",
+};
+
+const STATE_HEADER_COLORS: Record<string, string> = {
+  entrada_informacion: "bg-slate-700 text-slate-200",
+  planos: "bg-blue-900 text-blue-200",
+  requisicion: "bg-yellow-900 text-yellow-200",
+  produccion: "bg-orange-900 text-orange-200",
+  entrega: "bg-green-900 text-green-200",
+};
+
+function KanbanCardItem({ card }: { card: KanbanCard }) {
+  const allReceived = card.materials_total > 0 && card.materials_received === card.materials_total;
+  const hasOverdue =
+    card.fcs_delivery_date && new Date(card.fcs_delivery_date) < new Date();
+
   return (
-    <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-slate-400">{label}</p>
-          <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+    <Link href={`/projects/${card.id}`}>
+      <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 hover:border-slate-500 transition-colors cursor-pointer space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">{card.name}</p>
+            <p className="text-xs text-slate-400 truncate">{card.client_name}</p>
+          </div>
+          <span className="text-xs text-slate-500 flex-shrink-0">{card.project_number}</span>
         </div>
-        <Icon size={28} className={`${color} opacity-60`} />
+
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-slate-500 capitalize">{card.project_type}</span>
+          {card.fcs_delivery_date && (
+            <span className={hasOverdue ? "text-red-400 font-semibold" : "text-slate-400"}>
+              {format(new Date(card.fcs_delivery_date), "dd/MM")}
+              {hasOverdue && " !"}
+            </span>
+          )}
+        </div>
+
+        {card.materials_total > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 bg-slate-700 rounded-full h-1">
+              <div
+                className={`h-1 rounded-full ${allReceived ? "bg-green-500" : "bg-yellow-500"}`}
+                style={{
+                  width: `${Math.round((card.materials_received / card.materials_total) * 100)}%`,
+                }}
+              />
+            </div>
+            <span className="text-xs text-slate-500">
+              {card.materials_received}/{card.materials_total}
+            </span>
+          </div>
+        )}
       </div>
-    </div>
+    </Link>
   );
 }
 
 export default function Dashboard() {
-  const { data: stats } = useSWR<DashboardStats>("dashboard", api.dashboardStats, {
+  const { data, isLoading } = useSWR<DashboardData>("dashboard", api.dashboard, {
     refreshInterval: 30000,
   });
-  const { data: projects } = useSWR<ProjectListItem[]>("projects", () => api.listProjects(), {
-    refreshInterval: 30000,
-  });
-
-  const active = projects?.filter((p) => p.current_state !== "delivered") ?? [];
-  const delayed = projects?.filter(
-    (p) =>
-      p.fcs_delivery_date &&
-      new Date(p.fcs_delivery_date) < new Date() &&
-      p.current_state !== "delivered"
-  ) ?? [];
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Junta de Producción</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
-        </p>
+    <div className="space-y-5 max-w-full">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+          <p className="text-slate-400 text-sm mt-0.5">
+            {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
+          </p>
+        </div>
+        <Link
+          href="/projects"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors"
+        >
+          + Nuevo Proyecto
+        </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Proyectos Activos"
-          value={active.length}
-          icon={FolderOpen}
-          color="text-blue-400"
-        />
-        <StatCard
-          label="Atrasados"
-          value={delayed.length}
-          icon={AlertTriangle}
-          color={delayed.length > 0 ? "text-red-400" : "text-slate-400"}
-        />
-        <StatCard
-          label="OC Críticas Pendientes"
-          value={stats?.critical_po_pending ?? "–"}
-          icon={Box}
-          color={
-            (stats?.critical_po_pending ?? 0) > 0 ? "text-orange-400" : "text-slate-400"
-          }
-        />
-        <StatCard
-          label="Materiales Bajo Mínimo"
-          value={stats?.materials_below_min ?? "–"}
-          icon={TrendingUp}
-          color={
-            (stats?.materials_below_min ?? 0) > 0 ? "text-yellow-400" : "text-slate-400"
-          }
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center gap-3">
+          <FolderOpen size={22} className="text-blue-400 flex-shrink-0" />
+          <div>
+            <p className="text-xs text-slate-400">Proyectos Activos</p>
+            <p className="text-2xl font-bold text-blue-400">{data?.active_projects ?? "–"}</p>
+          </div>
+        </div>
+        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center gap-3">
+          <Package size={22} className="text-yellow-400 flex-shrink-0" />
+          <div>
+            <p className="text-xs text-slate-400">Materiales Pendientes</p>
+            <p className="text-2xl font-bold text-yellow-400">{data?.materials_pending ?? "–"}</p>
+          </div>
+        </div>
       </div>
 
       {/* Bottlenecks */}
-      {stats?.bottlenecks && stats.bottlenecks.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-orange-800 p-5">
-          <h3 className="text-sm font-semibold text-orange-300 mb-3 flex items-center gap-2">
-            <AlertTriangle size={15} /> Cuellos de Botella — Próximos 14 días
+      {data?.bottlenecks && data.bottlenecks.length > 0 && (
+        <div className="bg-slate-800 rounded-xl border border-orange-800 p-4">
+          <h3 className="text-xs font-semibold text-orange-300 flex items-center gap-1.5 mb-3">
+            <AlertTriangle size={13} /> Cuellos de Botella — Próximos 14 días
           </h3>
-          <div className="space-y-3">
-            {stats.bottlenecks.map((b) => (
+          <div className="space-y-2">
+            {data.bottlenecks.map((b) => (
               <div key={b.work_center_id}>
-                <div className="flex justify-between text-sm mb-1">
+                <div className="flex justify-between text-xs mb-1">
                   <span className="text-slate-300">{b.work_center_name}</span>
-                  <span
-                    className={
-                      b.utilization_pct >= 100 ? "text-red-400" : "text-orange-400"
-                    }
-                  >
-                    {b.utilization_pct}% cargado
+                  <span className={b.utilization_pct >= 100 ? "text-red-400" : "text-orange-400"}>
+                    {b.utilization_pct}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-slate-700 rounded-full h-1.5">
                   <div
-                    className={`h-2 rounded-full ${
-                      b.utilization_pct >= 100 ? "bg-red-500" : "bg-orange-500"
-                    }`}
+                    className={`h-1.5 rounded-full ${b.utilization_pct >= 100 ? "bg-red-500" : "bg-orange-500"}`}
                     style={{ width: `${Math.min(b.utilization_pct, 100)}%` }}
                   />
                 </div>
@@ -122,69 +136,34 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Projects overview */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-white">Proyectos Activos</h3>
-          <Link
-            href="/projects"
-            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            Ver todos →
-          </Link>
-        </div>
-        <div className="divide-y divide-slate-700">
-          {active.slice(0, 10).map((p) => {
-            const overdue =
-              p.fcs_delivery_date &&
-              new Date(p.fcs_delivery_date) < new Date() &&
-              p.current_state !== "delivered";
-            return (
-              <Link
-                key={p.id}
-                href={`/projects/${p.id}`}
-                className="flex items-center gap-4 px-5 py-3 hover:bg-slate-750 transition-colors"
+      {/* Kanban */}
+      {isLoading ? (
+        <div className="text-center py-16 text-slate-500">Cargando...</div>
+      ) : (
+        <div className="grid grid-cols-5 gap-3 min-h-[400px]">
+          {(data?.kanban ?? []).map((col) => (
+            <div
+              key={col.state}
+              className={`bg-slate-800 rounded-xl border ${STATE_COLORS[col.state] ?? "border-slate-700"} flex flex-col`}
+            >
+              <div
+                className={`px-3 py-2.5 rounded-t-xl text-xs font-semibold flex items-center justify-between ${STATE_HEADER_COLORS[col.state] ?? "bg-slate-700 text-slate-200"}`}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{p.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{p.customer_name}</p>
-                </div>
-                <StatusBadge status={p.current_state} size="xs" />
-                {p.fcs_delivery_date && (
-                  <span className={`text-xs ${overdue ? "text-red-400" : "text-slate-400"}`}>
-                    {format(new Date(p.fcs_delivery_date), "dd/MM/yy")}
-                  </span>
+                <span>{col.label}</span>
+                <span className="bg-black/20 px-1.5 py-0.5 rounded-full text-xs">
+                  {col.cards.length}
+                </span>
+              </div>
+              <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                {col.cards.map((card) => (
+                  <KanbanCardItem key={card.id} card={card} />
+                ))}
+                {col.cards.length === 0 && (
+                  <p className="text-xs text-slate-600 text-center py-6">Sin proyectos</p>
                 )}
-              </Link>
-            );
-          })}
-          {active.length === 0 && (
-            <p className="px-5 py-8 text-sm text-slate-500 text-center">
-              No hay proyectos activos.{" "}
-              <Link href="/projects" className="text-blue-400 hover:underline">
-                Crear uno
-              </Link>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* State funnel */}
-      {stats?.projects_by_state && Object.keys(stats.projects_by_state).length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-          <h3 className="font-semibold text-white mb-4">Distribución por Estado</h3>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(STATE_CONFIG).map(([state, { label }]) => {
-              const count = stats.projects_by_state[state] ?? 0;
-              if (count === 0) return null;
-              return (
-                <div key={state} className="flex items-center gap-2">
-                  <StatusBadge status={state} size="xs" />
-                  <span className="text-sm font-bold text-white">{count}</span>
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

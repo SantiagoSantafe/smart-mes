@@ -2,23 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  FolderKanban,
-  GanttChartSquare,
-  ShoppingCart,
-  Wrench,
-  Package,
-} from "lucide-react";
+import { LayoutDashboard, FolderKanban, GanttChartSquare, Wrench, LogOut } from "lucide-react";
 import clsx from "clsx";
+import { logout } from "@/lib/api";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Proyectos", icon: FolderKanban },
   { href: "/gantt", label: "Gantt / FCS", icon: GanttChartSquare },
-  { href: "/purchasing", label: "Compras", icon: ShoppingCart },
-  { href: "/purchasing/orders", label: "Órdenes de Compra", icon: Package },
-  { href: "/workcenters", label: "Centros de Trabajo", icon: Wrench },
+  { href: "/workcenters", label: "Áreas de Trabajo", icon: Wrench },
 ];
 
 export default function Sidebar() {
@@ -52,8 +44,14 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="px-4 py-3 border-t border-slate-700">
-        <p className="text-xs text-slate-500">v1.0 · Sin IA</p>
+      <div className="px-2 py-3 border-t border-slate-700">
+        <button
+          onClick={logout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+        >
+          <LogOut size={17} />
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   );

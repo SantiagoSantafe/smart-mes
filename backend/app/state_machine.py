@@ -1,30 +1,24 @@
 from sqlalchemy.orm import Session
 
-from app.models import POLine, Project, ProjectStateHistory
+from app.models import MaterialPlanLine, Project, ProjectStateHistory
 
 TRANSITIONS: dict[str, list[str]] = {
-    "commercial_order": ["production_board"],
-    "production_board": ["blueprints_review"],
-    "blueprints_review": ["purchasing"],
-    "purchasing": ["materials_received"],
-    "materials_received": ["production"],
-    "production": ["quality_check"],
-    "quality_check": ["logistics", "production"],
-    "logistics": ["delivered"],
-    "delivered": [],
+    "entrada_informacion": ["planos"],
+    "planos": ["requisicion"],
+    "requisicion": ["produccion"],
+    "produccion": ["entrega"],
+    "entrega": [],
 }
 
 STATE_LABELS: dict[str, str] = {
-    "commercial_order": "Orden Comercial",
-    "production_board": "Junta de Producción",
-    "blueprints_review": "Revisión de Planos",
-    "purchasing": "Compras",
-    "materials_received": "Materiales Recibidos",
-    "production": "Producción",
-    "quality_check": "Control de Calidad",
-    "logistics": "Logística",
-    "delivered": "Entregado",
+    "entrada_informacion": "Entrada de Información",
+    "planos": "Planos",
+    "requisicion": "Requisición",
+    "produccion": "Producción",
+    "entrega": "Entrega",
 }
+
+STATES_ORDERED = list(TRANSITIONS.keys())
 
 
 class TransitionError(Exception):
@@ -38,21 +32,24 @@ class TransitionBlocked(Exception):
 
 
 def _check_guards(project: Project, target_state: str, db: Session) -> None:
-    if target_state == "production":
+    if target_state == "produccion":
+        if not project.material_plan:
+            raise TransitionBlocked(
+                "El proyecto no tiene un plan de materiales. "
+                "Completa la etapa de Planos primero."
+            )
         pending = (
-            db.query(POLine)
-            .join(POLine.purchase_order)
+            db.query(MaterialPlanLine)
             .filter(
-                POLine.purchase_order.has(project_id=project.id),
-                POLine.is_critical.is_(True),
-                POLine.status.notin_(["received"]),
+                MaterialPlanLine.plan_id == project.material_plan.id,
+                MaterialPlanLine.is_received.is_(False),
             )
             .count()
         )
         if pending > 0:
             raise TransitionBlocked(
-                f"Hay {pending} línea(s) de materiales críticos pendientes de recibir. "
-                "Actualiza el estado en Compras antes de iniciar Producción."
+                f"Hay {pending} material(es) pendiente(s) de recibir en Requisición. "
+                "Marca todos como recibidos antes de iniciar Producción."
             )
 
 
@@ -65,8 +62,8 @@ def transition_project(
     allowed = TRANSITIONS.get(project.current_state, [])
     if target_state not in allowed:
         raise TransitionError(
-            f"No se puede pasar de '{project.current_state}' a '{target_state}'. "
-            f"Transiciones válidas: {allowed}"
+            f"No se puede pasar de '{STATE_LABELS.get(project.current_state, project.current_state)}' "
+            f"a '{STATE_LABELS.get(target_state, target_state)}'."
         )
 
     _check_guards(project, target_state, db)
@@ -78,7 +75,6 @@ def transition_project(
         reason=reason,
     )
     db.add(history)
-
     project.current_state = target_state
     db.commit()
     db.refresh(project)
