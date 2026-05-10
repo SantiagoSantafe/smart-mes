@@ -317,6 +317,17 @@ export interface POLine {
   notes?: string;
 }
 
+export interface PurchaseRequest {
+  id: number;
+  project_id?: number;
+  material_id: number;
+  material?: Material;
+  quantity_requested: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+}
+
 export interface PurchaseOrder {
   id: number;
   supplier_id: number;
