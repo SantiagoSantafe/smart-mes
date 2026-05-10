@@ -114,11 +114,27 @@ export const api = {
     req<Material[]>(`/api/purchasing/materials${lowStock ? "?low_stock=true" : ""}`),
   createMaterial: (body: object) =>
     req<Material>("/api/purchasing/materials", { method: "POST", body: JSON.stringify(body) }),
+  updateInventory: (materialId: number, body: object) =>
+    req<InventoryRecord>(`/api/purchasing/materials/${materialId}/inventory`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 
   // Purchasing — Suppliers
   listSuppliers: () => req<Supplier[]>("/api/purchasing/suppliers"),
   createSupplier: (body: object) =>
     req<Supplier>("/api/purchasing/suppliers", { method: "POST", body: JSON.stringify(body) }),
+
+  // Purchasing — Requests
+  listRequests: (projectId?: number, status?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project_id", String(projectId));
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return req<PurchaseRequest[]>(`/api/purchasing/requests${qs ? `?${qs}` : ""}`);
+  },
+  createRequest: (body: object) =>
+    req<PurchaseRequest>("/api/purchasing/requests", { method: "POST", body: JSON.stringify(body) }),
 
   // Purchasing — Purchase Orders
   listPurchaseOrders: (projectId?: number, status?: string) => {
@@ -283,13 +299,20 @@ export interface DashboardData {
   kanban: KanbanColumn[];
 }
 
+export interface InventoryRecord {
+  quantity_available: number;
+  quantity_reserved: number;
+  warehouse_location?: string;
+}
+
 export interface Supplier {
   id: number;
   name: string;
-  contact_name?: string;
-  email?: string;
-  phone?: string;
-  country?: string;
+  contact_info?: string;
+  tax_id?: string;
+  payment_terms?: string;
+  rating: number;
+  notes?: string;
   is_active: boolean;
 }
 
@@ -300,6 +323,8 @@ export interface Material {
   unit: string;
   category?: string;
   min_stock: number;
+  is_special_order: boolean;
+  inventory?: InventoryRecord;
 }
 
 export interface POLine {
@@ -321,8 +346,9 @@ export interface PurchaseRequest {
   id: number;
   project_id?: number;
   material_id: number;
-  material?: Material;
-  quantity_requested: number;
+  material: Material;
+  quantity_needed: number;
+  urgency: string;
   status: string;
   notes?: string;
   created_at: string;

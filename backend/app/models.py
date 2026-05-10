@@ -177,6 +177,7 @@ class Material(Base):
     unit: Mapped[str] = mapped_column(String(20), default="und")
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     min_stock: Mapped[float] = mapped_column(Float, default=0.0)
+    is_special_order: Mapped[bool] = mapped_column(Boolean, default=False)
 
     inventory: Mapped[Optional["InventoryRecord"]] = relationship(
         back_populates="material", uselist=False
@@ -208,10 +209,11 @@ class Supplier(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
-    contact_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    contact_info: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    tax_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    payment_terms: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    rating: Mapped[float] = mapped_column(Float, default=3.0)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchase_orders: Mapped[list["PurchaseOrder"]] = relationship(back_populates="supplier")
@@ -285,10 +287,13 @@ class PurchaseRequest(Base):
         ForeignKey("projects.id"), nullable=True
     )
     material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"))
-    quantity_requested: Mapped[float] = mapped_column(Float)
+    quantity_needed: Mapped[float] = mapped_column(Float)
+    urgency: Mapped[str] = mapped_column(String(20), default="normal")
     status: Mapped[str] = mapped_column(String(30), default="pending")
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    material: Mapped["Material"] = relationship()
 
 
 class BOM(Base):

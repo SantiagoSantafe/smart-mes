@@ -251,6 +251,7 @@ class MaterialCreate(BaseModel):
     unit: str = "und"
     category: Optional[str] = None
     min_stock: float = 0.0
+    is_special_order: bool = False
 
 
 class MaterialOut(MaterialCreate):
@@ -280,10 +281,11 @@ class MaterialWithInventory(MaterialOut):
 
 class SupplierCreate(BaseModel):
     name: str
-    contact_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    country: Optional[str] = None
+    contact_info: Optional[str] = None
+    tax_id: Optional[str] = None
+    payment_terms: Optional[str] = None
+    rating: float = 3.0
+    notes: Optional[str] = None
 
 
 class SupplierOut(SupplierCreate):
@@ -362,7 +364,8 @@ class PurchaseOrderOut(BaseModel):
 class PurchaseRequestCreate(BaseModel):
     project_id: Optional[int] = None
     material_id: int
-    quantity_requested: float
+    quantity_needed: float
+    urgency: str = "normal"
     notes: Optional[str] = None
 
 
@@ -371,6 +374,7 @@ class PurchaseRequestOut(PurchaseRequestCreate):
     id: int
     status: str
     created_at: datetime
+    material: MaterialOut
 
 
 class BOMLineCreate(BaseModel):

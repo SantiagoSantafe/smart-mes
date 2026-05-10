@@ -319,21 +319,21 @@ def list_requests(
 
 @router.post("/requests", response_model=PurchaseRequestOut, status_code=201)
 def create_request(body: PurchaseRequestCreate, db: Session = Depends(get_db)):
-    req = PurchaseRequest(**body.model_dump())
-    db.add(req)
+    request = PurchaseRequest(**body.model_dump())
+    db.add(request)
     db.commit()
-    db.refresh(req)
-    return req
+    db.refresh(request)
+    return request
 
 
 @router.patch("/requests/{req_id}/status")
 def update_request_status(
     req_id: int, status: str, db: Session = Depends(get_db)
 ):
-    req = db.get(PurchaseRequest, req_id)
-    if not req:
+    purchase_request = db.get(PurchaseRequest, req_id)
+    if not purchase_request:
         raise HTTPException(404, "Solicitud no encontrada")
-    req.status = status
+    purchase_request.status = status
     db.commit()
     return {"ok": True}
 
