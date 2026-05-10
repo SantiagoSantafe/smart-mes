@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 export default function PurchaseOrdersPage() {
-  const { data: orders } = useSWR<PurchaseOrder[]>("po-orders", () => api.listOrders2());
+  const { data: orders } = useSWR<PurchaseOrder[]>("po-orders", () => api.listPurchaseOrders());
   const { data: suppliers } = useSWR<Supplier[]>("suppliers", api.listSuppliers);
   const { data: materials } = useSWR<Material[]>("materials", api.listMaterials);
   const { data: projects } = useSWR<ProjectListItem[]>("projects", () => api.listProjects());

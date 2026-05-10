@@ -108,6 +108,35 @@ export const api = {
   updateSlot: (slotId: number, body: object) =>
     req<FCSSlot>(`/api/fcs/slots/${slotId}`, { method: "PATCH", body: JSON.stringify(body) }),
   bottlenecks: () => req<Bottleneck[]>("/api/fcs/bottlenecks"),
+
+  // Purchasing — Materials
+  listMaterials: (lowStock?: boolean) =>
+    req<Material[]>(`/api/purchasing/materials${lowStock ? "?low_stock=true" : ""}`),
+  createMaterial: (body: object) =>
+    req<Material>("/api/purchasing/materials", { method: "POST", body: JSON.stringify(body) }),
+
+  // Purchasing — Suppliers
+  listSuppliers: () => req<Supplier[]>("/api/purchasing/suppliers"),
+  createSupplier: (body: object) =>
+    req<Supplier>("/api/purchasing/suppliers", { method: "POST", body: JSON.stringify(body) }),
+
+  // Purchasing — Purchase Orders
+  listPurchaseOrders: (projectId?: number, status?: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project_id", String(projectId));
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return req<PurchaseOrder[]>(`/api/purchasing/orders${qs ? `?${qs}` : ""}`);
+  },
+  createPurchaseOrder: (body: object) =>
+    req<PurchaseOrder>("/api/purchasing/orders", { method: "POST", body: JSON.stringify(body) }),
+  updateOrderStatus: (poId: number, status: string) =>
+    req<void>(`/api/purchasing/orders/${poId}/status?status=${status}`, { method: "PATCH" }),
+  receiveLine: (poId: number, lineId: number, body: object) =>
+    req<POLine>(`/api/purchasing/orders/${poId}/lines/${lineId}/receive`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 };
 
 // ---------------------------------------------------------------------------
@@ -252,6 +281,53 @@ export interface DashboardData {
   materials_pending: number;
   bottlenecks: Bottleneck[];
   kanban: KanbanColumn[];
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  country?: string;
+  is_active: boolean;
+}
+
+export interface Material {
+  id: number;
+  code: string;
+  description: string;
+  unit: string;
+  category?: string;
+  min_stock: number;
+}
+
+export interface POLine {
+  id: number;
+  po_id: number;
+  material_id: number;
+  material: Material;
+  quantity: number;
+  unit_price?: number;
+  currency: string;
+  delivery_date_expected?: string;
+  delivery_date_actual?: string;
+  is_critical: boolean;
+  status: string;
+  notes?: string;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  supplier_id: number;
+  supplier: Supplier;
+  project_id?: number;
+  currency: string;
+  status: string;
+  total_amount?: number;
+  notes?: string;
+  created_at: string;
+  lines: POLine[];
 }
 
 export const STATE_LABELS: Record<string, string> = {

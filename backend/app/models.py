@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func,
+    Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -162,3 +162,157 @@ class FCSScheduleSlot(Base):
 
     project: Mapped["Project"] = relationship(back_populates="fcs_slots")
     work_center: Mapped["WorkCenter"] = relationship(back_populates="fcs_slots")
+
+
+# ---------------------------------------------------------------------------
+# PURCHASING — Materials, Suppliers, Purchase Orders
+# ---------------------------------------------------------------------------
+
+class Material(Base):
+    __tablename__ = "materials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(100), unique=True)
+    description: Mapped[str] = mapped_column(String(300))
+    unit: Mapped[str] = mapped_column(String(20), default="und")
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    min_stock: Mapped[float] = mapped_column(Float, default=0.0)
+
+    inventory: Mapped[Optional["InventoryRecord"]] = relationship(
+        back_populates="material", uselist=False
+    )
+    po_lines: Mapped[list["POLine"]] = relationship(back_populates="material")
+    bom_lines: Mapped[list["BOMLine"]] = relationship(back_populates="material")
+    supplier_materials: Mapped[list["SupplierMaterial"]] = relationship(
+        back_populates="material"
+    )
+
+
+class InventoryRecord(Base):
+    __tablename__ = "inventory_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"), unique=True)
+    quantity_available: Mapped[float] = mapped_column(Float, default=0.0)
+    quantity_reserved: Mapped[float] = mapped_column(Float, default=0.0)
+    warehouse_location: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    material: Mapped["Material"] = relationship(back_populates="inventory")
+
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    contact_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    purchase_orders: Mapped[list["PurchaseOrder"]] = relationship(back_populates="supplier")
+    supplier_materials: Mapped[list["SupplierMaterial"]] = relationship(
+        back_populates="supplier"
+    )
+
+
+class SupplierMaterial(Base):
+    __tablename__ = "supplier_materials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"))
+    lead_time_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    price_history: Mapped[Optional[list]] = mapped_column(JSON, default=list)
+    last_quoted: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    supplier: Mapped["Supplier"] = relationship(back_populates="supplier_materials")
+    material: Mapped["Material"] = relationship(back_populates="supplier_materials")
+
+
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    project_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("projects.id"), nullable=True
+    )
+    currency: Mapped[str] = mapped_column(String(10), default="COP")
+    status: Mapped[str] = mapped_column(String(30), default="draft")
+    total_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    supplier: Mapped["Supplier"] = relationship(back_populates="purchase_orders")
+    lines: Mapped[list["POLine"]] = relationship(
+        back_populates="po", order_by="POLine.id"
+    )
+
+
+class POLine(Base):
+    __tablename__ = "po_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    po_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"))
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"))
+    quantity: Mapped[float] = mapped_column(Float)
+    unit_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), default="COP")
+    delivery_date_expected: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    delivery_date_actual: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    is_critical: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    po: Mapped["PurchaseOrder"] = relationship(back_populates="lines")
+    material: Mapped["Material"] = relationship(back_populates="po_lines")
+
+
+class PurchaseRequest(Base):
+    __tablename__ = "purchase_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("projects.id"), nullable=True
+    )
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"))
+    quantity_requested: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class BOM(Base):
+    __tablename__ = "boms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), unique=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    lines: Mapped[list["BOMLine"]] = relationship(back_populates="bom", order_by="BOMLine.id")
+
+
+class BOMLine(Base):
+    __tablename__ = "bom_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bom_id: Mapped[int] = mapped_column(ForeignKey("boms.id"))
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"))
+    quantity_required: Mapped[float] = mapped_column(Float)
+    unit: Mapped[str] = mapped_column(String(20), default="und")
+    is_critical: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    bom: Mapped["BOM"] = relationship(back_populates="lines")
+    material: Mapped["Material"] = relationship(back_populates="bom_lines")
